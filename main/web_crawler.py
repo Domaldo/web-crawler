@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 # Import SQLite for storage of data as well as import Datetime for column
 import sqlite3
 from datetime import datetime
+# Import regex for the proper filtering of words
+import re
 
 # Crawler Class
 class HackerNewsCrawler:
@@ -77,11 +79,33 @@ class DatabaseManager:
         cursor.execute("SELECT * FROM hacker_news_entries")
         return cursor.fetchall()
 
+# Filter Class
+class EntryFilter:
+    @staticmethod
+    def count_words(title):
+        # Using regex to count words, ignoring symbols
+        words = re.findall(r'\b\w[\w\'\-]*\w\b|\b\w\b', title)
+        return len(words)
+
+    def filter_by_word_count(self, entries, word_limit, filter_type):
+        if filter_type == 'more_than':
+            # Filter entries with more than "word_limit" words, in this case 5
+            filtered_entries = [entry for entry in entries if self.count_words(entry['title']) > word_limit]
+            # Sort filtered entries by number of comments in descending order
+            return sorted(filtered_entries, key=lambda x: x['comments'], reverse=True)
+        
+        elif filter_type == 'less_than_equal':
+            # Filter entries with "word_limit" or fewer words, in this case 5
+            filtered_entries = [entry for entry in entries if self.count_words(entry['title']) <= word_limit]
+            # Sort filtered entries by points in descending order
+            return sorted(filtered_entries, key=lambda x: x['points'], reverse=True)
+
 # Main Function
 def main():
     # Initialize classes
     crawler = HackerNewsCrawler()
     db_manager = DatabaseManager()
+    entry_filter = EntryFilter()
 
     # Fetch and save entries
     entries = crawler.fetch_entries()
@@ -93,6 +117,8 @@ def main():
         print("\nChoose an option:")
         print("0 - Exit")
         print("1 - Show all entries")
+        print("2 - Filter: More than 5 words, order by number of comments")
+        print("3 - Filter: 5 or fewer words, order by points")
         
         choice = input("Enter your choice: ")
 
@@ -106,8 +132,20 @@ def main():
             for entry in all_entries:
                 print(entry)
         
+        # Prints filtered entries from the database that have more than 5 words in their title, and orders them by the number of comments
+        elif choice == '2':
+            filtered = entry_filter.filter_by_word_count(entries, 5, 'more_than')
+            for entry in filtered:
+                print(entry)
+        
+        # Prints filtered entries from the database that have equal or less than 5 words in their title, and orders them by points
+        elif choice == '3':
+            filtered = entry_filter.filter_by_word_count(entries, 5, 'less_than_equal')
+            for entry in filtered:
+                print(entry)
+        
         else:
-            print("Invalid choice. Please enter 0 or 1.")
+            print("Invalid choice. Please enter 0, 1, 2, or 3.")
 
 if __name__ == "__main__":
     main()
