@@ -1,6 +1,9 @@
 # Import Web Crawling Dependencies
 import requests
 from bs4 import BeautifulSoup
+# Import SQLite for storage of data as well as import Datetime for column
+import sqlite3
+from datetime import datetime
 
 # Crawler Class
 class HackerNewsCrawler:
@@ -36,13 +39,54 @@ class HackerNewsCrawler:
         # Returning all values as a list
         return entries
 
+# Database Class
+class DatabaseManager:
+    # Set database name, location in origin
+    def __init__(self, db_name='hacker_news.db'):
+        self.conn = sqlite3.connect(db_name)
+        self.setup_database()
+
+    # Table structure for database
+    def setup_database(self):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS hacker_news_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rank INTEGER,
+                title TEXT,
+                points INTEGER,
+                comments INTEGER,
+                timestamp TEXT
+            )
+        ''')
+        self.conn.commit()
+
+    # Function for saving data
+    def save_entry(self, entry):
+        cursor = self.conn.cursor()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute('''
+            INSERT INTO hacker_news_entries (rank, title, points, comments, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (entry['rank'], entry['title'], entry['points'], entry['comments'], timestamp))
+        self.conn.commit()
+
+    #Function for displaying data
+    def get_all_entries(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM hacker_news_entries")
+        return cursor.fetchall()
+
 # Main Function
 def main():
     # Initialize classes
     crawler = HackerNewsCrawler()
+    db_manager = DatabaseManager()
 
-    # Fetch entries
+    # Fetch and save entries
     entries = crawler.fetch_entries()
+    for entry in entries:
+        db_manager.save_entry(entry)
 
     while True:  # Infinite loop to keep showing the menu
         # Options for the user
@@ -56,9 +100,10 @@ def main():
             print("Exiting program.")
             break  # Exit the loop and end the program
 
-        # Fetches and prints all entries one by one
+        # Prints the entries from the database class functions
         elif choice == '1':
-            for entry in entries:
+            all_entries = db_manager.get_all_entries()
+            for entry in all_entries:
                 print(entry)
         
         else:
