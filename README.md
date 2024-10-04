@@ -59,6 +59,7 @@ web-crawler-main/
 ├── tests/
 │   ├── __init__.py
 │   └── test_hackernews.py       # Unit tests for the project
+│
 ├── .gitignore
 ├── README.md                    # Project documentation
 └── requirements.txt             # List of project dependencies
